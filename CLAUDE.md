@@ -15,6 +15,7 @@ You are the operator of a content ledger. This repo syncs the owner's Airtable c
 
 | Task | Command |
 |---|---|
+| Build the Airtable base (first run) | `python execution/setup_airtable.py --workspace wsp...` |
 | Verify credentials | `python execution/check.py` |
 | Snapshot Instagram metrics | `python execution/ig_pull.py` |
 | Sync ledger (preview first) | `python execution/sync.py --dry-run`, then `python execution/sync.py` |
@@ -24,7 +25,7 @@ You are the operator of a content ledger. This repo syncs the owner's Airtable c
 
 ## When something fails
 
-Run `execution/check.py` first; it separates credential problems from code problems. API failures get one silent retry (already built into the scripts). An expired Instagram token (they last about 60 days) is fixed by regenerating it in the Meta app's "API setup with Instagram login" and updating `.env`.
+Run `execution/check.py` first; it separates credential problems from code problems. A missing table or field is fixed by re-running `python execution/setup_airtable.py` (it adds only what is absent), never by renaming things to match whatever is in the base. API failures get one silent retry (already built into the scripts). An expired Instagram token (they last about 60 days) is fixed by regenerating it in the Meta app's "API setup with Instagram login" and updating `.env`.
 
 ## Useful reads the ledger makes possible
 

@@ -21,53 +21,56 @@ cd content-engine
 pip install -r requirements.txt
 ```
 
-Then copy `.env.example` to `.env`. The two setup prompts below fill it in.
+Then copy `.env.example` to `.env`. The steps below fill it in.
 
-## Setup Prompt 1 - Airtable (paste into Claude Code)
+## Get your Airtable token
+
+You do not build the database. The engine builds it for you, so the only manual step is handing it a key.
+
+1. Go to [airtable.com/create/tokens](https://airtable.com/create/tokens) and press **Create token**. Name it anything.
+2. Under **Access**, choose **All current and future bases in all current and future workspaces**. The base does not exist yet, so there is nothing narrower to point the token at.
+3. Under **Scopes**, add all four:
+
+   | Scope | Why it's needed |
+   |---|---|
+   | `data.records:read` | Read your content records |
+   | `data.records:write` | Create and update records |
+   | `schema.bases:read` | See the structure of a base |
+   | `schema.bases:write` | Create the base, tables, and fields |
+
+4. Press **Create token** and copy the value. Airtable shows it exactly once.
+5. Paste it into `.env`:
+
+```
+AIRTABLE_TOKEN=patXXXXXXXXXXXXXX.XXXXXXXX...
+```
+
+The two schema scopes are the difference between Claude walking you through 23 fields by hand and Claude building the whole thing in one command.
+
+## Setup Prompt 1 - build the database (paste into Claude Code)
 
 Open Claude Code inside the `content-engine` folder and paste this whole block:
 
 ```
-Set up the Airtable side of this content engine with me, interactively, one step at a time. Wait for me to confirm each step before moving on.
+Build the Airtable side of this content engine. My AIRTABLE_TOKEN is already in .env with data.records read+write and schema.bases read+write.
 
-Step 1 - the base. Walk me through creating an Airtable base called "Content Calendar" with two tables.
+Step 1 - the workspace. Ask me for my Airtable workspace URL, and wait for it. I get it by opening airtable.com, clicking my workspace in the sidebar, and copying the address bar. It looks like https://airtable.com/workspaces/wspXXXXXXXX/workspace.
 
-Table 1, "All Content", with these exact fields:
-- Content Title (single line text, the primary field)
-- Platform (multiple select: Instagram, TikTok, YouTube, LinkedIn)
-- Content Type (single select: Educational, Story, Demo)
-- Status (single select: Idea, Scripted, Recorded, Published)
-- Hook (long text)
-- Script (long text)
-- Caption (long text)
-- Post Date (date)
-- IG Post Link (URL)
-- Notes (long text)
+Step 2 - build it. Run:
 
-Table 2, "IG Posts", with these exact fields:
-- Media ID (single line text, the primary field)
-- Permalink (URL)
-- Posted (date)
-- Product Type (single line text)
-- Caption (long text)
-- Views (number)
-- Reach (number)
-- Likes (number)
-- Comments (number)
-- Saved (number)
-- Shares (number)
-- Total Interactions (number)
-- Analytics Updated (date)
+python execution/setup_airtable.py --workspace "<the URL I gave you>"
 
-Then have me add a field called "Content" to IG Posts, type "Link to another record", pointing at All Content, and rename the auto-created reverse field in All Content to "IG Posts".
+That creates the "Content Calendar" base with both tables (All Content and IG Posts), every field, and the link between them, then writes AIRTABLE_BASE_ID, ALL_CONTENT_TABLE_ID and IG_POSTS_TABLE_ID into my .env.
 
-Step 2 - credentials. Walk me through creating a personal access token in Airtable's developer hub with data.records:read and data.records:write scopes, granted to this base only. Then help me find the base ID (starts with "app", in the base URL) and both table IDs (start with "tbl", in each table's URL).
+If it stops because I already have a base with that name, do not force it. Ask me whether that base is one I'm already using. If it is, re-run with --name "Content Engine" to build a separate one. Only if I confirm I want the engine built into the existing base, re-run with --reuse, which adds the missing tables and fields and changes nothing else.
 
-Step 3 - wire it up. Put AIRTABLE_TOKEN, AIRTABLE_BASE_ID, ALL_CONTENT_TABLE_ID, and IG_POSTS_TABLE_ID into my .env file (I'll paste the values when you ask), then run:
+Step 3 - confirm. Run:
 
 python execution/check.py
 
-and confirm both tables come back OK. If anything fails, tell me exactly which value to fix and how.
+and confirm both tables come back OK. If anything fails, read the error, tell me the exact value to fix and how, then re-run. Never change the table or field names in execution/setup_airtable.py to get past an error, because every other script reads those exact names.
+
+Step 4 - orient me. Open the base link the setup script printed and tell me what I'm looking at: which table I type into, which one the scripts own, and what the link field between them is for.
 ```
 
 ## Setup Prompt 2 - Instagram (paste into Claude Code)
@@ -119,6 +122,7 @@ Two habits keep the ledger true forever:
 
 | Script | What it does |
 |---|---|
+| `execution/setup_airtable.py` | Builds the base, both tables, all fields, and the link, then writes the ids into `.env`. Run once; safe to re-run. |
 | `execution/check.py` | Proves your credentials reach Airtable and Instagram. Run it first when anything fails. |
 | `execution/ig_pull.py` | Snapshots every post's metrics from the Instagram API into `analytics/` (append-only). |
 | `execution/sync.py` | Upserts one IG Posts row per post and links each post to its idea. `--dry-run` previews. |

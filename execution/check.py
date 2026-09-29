@@ -39,8 +39,10 @@ def main():
                             headers={"Authorization": f"Bearer {token}"},
                             params={"maxRecords": 3}, timeout=30)
         if resp.status_code == 401 or resp.status_code == 403:
-            print(f"FAIL: {label}: token rejected ({resp.status_code}). "
-                  "Regenerate AIRTABLE_TOKEN with data.records read+write on this base.")
+            print(f"FAIL: {label}: token rejected ({resp.status_code}). Regenerate "
+                  "AIRTABLE_TOKEN at airtable.com/create/tokens with data.records:read, "
+                  "data.records:write, schema.bases:read, schema.bases:write, and access "
+                  "to all current and future bases.")
             ok = False
             continue
         if resp.status_code == 404:
